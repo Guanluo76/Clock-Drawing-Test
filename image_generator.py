@@ -5,7 +5,7 @@ assigning image loader.
 
 from __future__ import absolute_import
 
-from utils.meta_singleton import MetaSingleton
+from utils.metas.meta_singleton import MetaSingleton
 from utils.lazy_property import lazy_property
 
 import cv2 as cv

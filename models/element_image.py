@@ -6,7 +6,7 @@ from __future__ import absolute_import
 
 import cv2 as cv
 
-from utils.meta_mixin import MetaMixin
+from utils.metas.meta_mixin import MetaMixin
 from models.model_mixins.image_mixin import ImageMixin
 from utils.lazy_property import lazy_property
 

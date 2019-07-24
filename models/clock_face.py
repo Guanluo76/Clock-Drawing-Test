@@ -4,9 +4,9 @@ from functools import reduce
 import numpy as np
 import cv2 as cv
 
+from utils.metas.meta_mixin import MetaMixin
 from models.model_mixins.image_mixin import ImageMixin
 from models.circle import Circle
-from utils.meta_mixin import MetaMixin
 from utils.lazy_property import lazy_property, multi_lazy_properties
 
 
@@ -146,5 +146,6 @@ class TestClockFace(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    # run unittest TestClockFace
     unittest.main()
 

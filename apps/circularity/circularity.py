@@ -4,7 +4,7 @@ import numpy as np
 import cv2 as cv
 
 from apps.app import App
-from utils.meta_singleton import MetaSingleton
+from utils.metas.meta_singleton import MetaSingleton
 from utils.subscribe_methods import subscribe_methods
 from settings import config
 

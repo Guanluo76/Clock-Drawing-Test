@@ -31,7 +31,7 @@ def model_mixins_test_suite():
 
 
 if __name__ == '__main__':
-    # run model_mixins test
+    # run model_mixins tests
     runner = unittest.TextTestRunner()
     runner.run(model_mixins_test_suite())
 

@@ -1,6 +1,8 @@
+"""
+The lazy_property module. Provides lazy property functionality.
+"""
+
 from __future__ import absolute_import
-from functools import partial
-import inspect
 
 from excepts.lazy_excepts import LazyPropertyError
 

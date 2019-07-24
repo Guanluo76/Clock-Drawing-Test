@@ -1,10 +1,17 @@
+"""
+The meta_singleton_mixin module.
+"""
+
 from __future__ import absolute_import
 
-from utils.meta_singleton import MetaSingleton
-from utils.meta_mixin import MetaMixin
+from utils.metas.meta_singleton import MetaSingleton
+from utils.metas.meta_mixin import MetaMixin
 
 
 class MetaSingletonMixin(MetaSingleton, MetaMixin):
+    """
+    A metaclass with both singleton and mixin features.
+    """
     pass
 
 
@@ -12,6 +19,10 @@ import unittest
 
 
 class TestMetaSingletonMixin(unittest.TestCase):
+    """
+    Test MetaSingletonMixin class.
+    """
+
     class _Mixin():
         """
         Mixin class for testing.
@@ -47,5 +58,6 @@ class TestMetaSingletonMixin(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    # run unittest TestMetaSingletonMixin
     unittest.main()
 

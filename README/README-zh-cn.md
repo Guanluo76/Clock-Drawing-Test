@@ -33,7 +33,7 @@
 - 位于园内均匀分布，并且按 1 - 12 顺序排列的数字
 - 指向正确时间（由测试方指定）的时针与分针
 
-![画钟测试样本示例](imgs/readme/CDT-sample.png)
+![画钟测试样本示例](../imgs/readme/CDT-sample.png)
 
 
 ## <span id='dependencies'>依赖</span>
@@ -78,9 +78,9 @@ import cv2
 
 图示：
 
-![第一步](imgs/1.png)
-![第二步](imgs/2.png)
-![差值](imgs/readme/2-1.png)
+![第一步](../imgs/1.png)
+![第二步](../imgs/2.png)
+![差值](../imgs/readme/2-1.png)
 
 #### <span id='3-1'>输入图像预处理</span>
 
@@ -100,7 +100,7 @@ import cv2
 
 *\* 目前本系统只实现了前两分的评分，详见[未来扩展 - 计分思路](#mirai-scoring)。*
 
-#### <span id='4-1'>第一分</span>
+#### <span id='4-1'>第一分 - 封闭的圆</span>
 
 利用圆是同等周长下面积最大的图形这一特质进行圆度计算。可以使用轮廓长度（即周长）比轮廓面积（即面积）计算，也可以使用最大内切圆与轮廓面积的比计算。如果圆度超过阈值，则认为通过。
 
@@ -110,9 +110,9 @@ import cv2
 
 图示：
 
-![距离变换](imgs/readme/distance_transform.png)
+![距离变换](../imgs/readme/distance_transform.png)
 
-#### <span id='4-2'>第二分</span>
+#### <span id='4-2'>第二分 - 位于圆内并且均匀分布的刻度</span>
 
 将表盘最大内切圆12等分，取每一份扇形的中间部分作为刻度的区域。如果一共仅有12个刻度元素，并且12个区域内均有且仅有一个刻度，则认为通过。
 

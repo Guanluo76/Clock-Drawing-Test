@@ -117,5 +117,6 @@ class TestCircle(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    # run unittest TestCircle
     unittest.main()
 

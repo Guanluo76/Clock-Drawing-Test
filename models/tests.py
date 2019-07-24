@@ -11,10 +11,12 @@ def models_test_suite():
     Build test suite for models package.
     """
     from models.model_mixins.tests import model_mixins_test_suite
+    from models.scale.tests import scale_model_test_suite
 
     # load test suites from child packages
     models_test_suites = [
                 model_mixins_test_suite(),
+                scale_model_test_suite(),
             ]
 
     import models.clock_face

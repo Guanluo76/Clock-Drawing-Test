@@ -5,7 +5,7 @@ The experiment module.
 from __future__ import absolute_import
 from functools import reduce, partial
 
-from utils.meta_singleton import MetaSingleton
+from utils.metas.meta_singleton import MetaSingleton
 from utils.lazy_property import lazy_property
 from image_generator import ImageGenerator
 

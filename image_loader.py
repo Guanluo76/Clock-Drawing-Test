@@ -6,7 +6,7 @@ from __future__ import absolute_import
 
 import cv2 as cv
 
-from utils.meta_singleton import MetaSingleton
+from utils.metas.meta_singleton import MetaSingleton
 from image_generator import subscribe_image_generator
 
 
