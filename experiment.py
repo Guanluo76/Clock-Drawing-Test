@@ -24,19 +24,15 @@ class Experiment(metaclass=MetaSingleton):
 
         @return list tests
         """
-        from models.clock_face import ClockFace
-        from models.scale.scale_image import ScaleImage
         from apps.circularity.circularity import Circularity
         from apps.scale.scale import Scale
-
-        # get clock face from the first image
-        clock_face = ClockFace(next(self.img_generator))
+        from models.clock_face import ClockFace
+        from models.scale.scale_image import ScaleImage
 
         # list of the test functions
         return [
-                partial(Circularity(), clock_face),
-                partial(Scale(),
-                    ScaleImage(clock_face, next(self.img_generator))),
+                partial(Circularity(), ClockFace(next(self.img_generator))),
+                partial(Scale(), ScaleImage(next(self.img_generator))),
             ]
 
     @lazy_property
@@ -54,7 +50,7 @@ class Experiment(metaclass=MetaSingleton):
 import unittest
 
 
-# @unittest.skip('Skip experiment test to test image_generator module.')
+@unittest.skip('skipped to test circularity module.')
 class TestExperiment(unittest.TestCase):
     """
     Test Experiment class.

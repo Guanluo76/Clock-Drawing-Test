@@ -9,11 +9,12 @@ from functools import reduce
 import numpy as np
 import cv2 as cv
 
+from utils.metas.meta_singleton import MetaSingleton
 from utils.lazy_property import lazy_property
 from settings import config
 
 
-class Circle():
+class Circle(metaclass=MetaSingleton):
     """
     The circle class.
     """
@@ -81,6 +82,9 @@ class TestCircle(unittest.TestCase):
     """
     Test Circle class.
     """
+    # create a test circle class for unittest
+    _TestCircle = type('_TestCircle', (Circle, ), {})
+
     def test_sectors(self):
         """
         Test evaluation method for sectors.
@@ -88,7 +92,8 @@ class TestCircle(unittest.TestCase):
         self.assertIsNotNone(Circle.sectors.__doc__)
 
         # create a circle with radius 200 on the center of a  500 x 500 image
-        circle = Circle(np.zeros((500, 500), dtype='uint8'), (250, 250), 200)
+        circle = type(self)._TestCircle(
+                np.zeros((500, 500), dtype='uint8'), (250, 250), 200)
         self.assertEqual(len(circle.sectors), 12)
 
     def test_is_in_sector(self):
@@ -98,7 +103,8 @@ class TestCircle(unittest.TestCase):
         self.assertIsNotNone(Circle.is_in_sector.__doc__)
 
         # create a circle with radius 200 on the center of a  500 x 500 image
-        circle = Circle(np.zeros((500, 500), dtype='uint8'), (250, 250), 200)
+        circle = type(self)._TestCircle(
+                np.zeros((500, 500), dtype='uint8'), (250, 250), 200)
 
         # test a point inside first sector
         self.assertTrue(circle.is_in_sector((250, 200), 0))

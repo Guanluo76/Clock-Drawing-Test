@@ -4,13 +4,13 @@ from functools import reduce
 import numpy as np
 import cv2 as cv
 
-from utils.metas.meta_mixin import MetaMixin
+from utils.metas.meta_singleton_mixin import MetaSingletonMixin
 from models.model_mixins.image_mixin import ImageMixin
 from models.circle import Circle
 from utils.lazy_property import lazy_property, multi_lazy_properties
 
 
-class ClockFace(metaclass=MetaMixin, mixins=(ImageMixin, )):
+class ClockFace(metaclass=MetaSingletonMixin, mixins=(ImageMixin, )):
     """
     The clock face.
     """
@@ -111,6 +111,10 @@ class TestClockFace(unittest.TestCase):
     """
     Test ClockFace class.
     """
+    # defines test ClockFace class for unittest
+    _TestClockFace = type('_TestClockFace', (ClockFace, ), {},
+                          mixins=(ImageMixin, ))
+
     def test_get_contours_and_area(self):
         """
         Test _get_contours_and_area method with a square.
@@ -118,9 +122,10 @@ class TestClockFace(unittest.TestCase):
         from utils.create_imgs import create_square
 
         self.assertIsNotNone(ClockFace._get_contours_and_area.__doc__)
+
         # square, side 50
         # perimeter 200, area 2500
-        square_clock_face =  ClockFace(create_square())
+        square_clock_face =  type(self)._TestClockFace(create_square())
         square_longest_contour, square_main_contour, square_area = \
                                 square_clock_face._get_contours_and_area()
 
@@ -138,7 +143,7 @@ class TestClockFace(unittest.TestCase):
 
         # square, side 50
         # i.e. inscribed circle has radius 25
-        square_image = ClockFace(create_square())
+        square_image = type(self)._TestClockFace(create_square())
 
         # test center and radius
         self.assertEqual(square_image.inscribed_circle.center, (50, 50))

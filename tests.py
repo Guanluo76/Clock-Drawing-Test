@@ -44,6 +44,6 @@ def cdt_test_suite():
 
 if __name__ == '__main__':
     # run cdt tests
-    runner = unittest.TextTestRunner(verbosity=2)
+    runner = unittest.TextTestRunner()
     runner.run(cdt_test_suite())
 

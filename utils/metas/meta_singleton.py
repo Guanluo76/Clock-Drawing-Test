@@ -6,9 +6,9 @@ class MetaSingleton(type):
     """
     The metaclass for singletons.
     """
-
     # instances list, store the instantiated singleton instances
     _instances = {}
+
     def __call__(cls, *args, **kwargs):
         """
         When instantiating, check the instances list if a singleton instance

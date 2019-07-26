@@ -18,7 +18,7 @@ class Circularity(App, metaclass=MetaSingleton):
         pass
 
     @methods.add_method
-    def _inscribed_circle_mtd(self, clock_face, img=None):
+    def _inscribed_circle_mtd(self, clock_face):
         """
         Compute and return the circularity of the shape with inscribed circle
         area method.
@@ -41,7 +41,7 @@ class Circularity(App, metaclass=MetaSingleton):
                type(self)._CIRCULARITY_THRESH_VAL
 
     @methods.add_method
-    def _perimeter_area_mtd(self, clock_face, img=None):
+    def _perimeter_area_mtd(self, clock_face):
         """
         Compute and return the circularity of the shape with perimeter-area
         method.
@@ -75,17 +75,20 @@ class TestCircularity(unittest.TestCase):
         """
         from utils.create_imgs import create_square, create_circle
         from models.clock_face import ClockFace
+        from models.model_mixins.image_mixin import ImageMixin
 
         self.assertIsNotNone(Circularity()._inscribed_circle_mtd.__doc__)
 
         # square case
         square_circularity = Circularity()._inscribed_circle_mtd(
-                                                ClockFace(create_square()))
+                            type('_TestClockFace1', (ClockFace, ),
+                                {}, mixins=(ImageMixin, ))(create_square()))
         self.assertEqual(square_circularity, False)
 
         # circle case
         circle_circularity = Circularity()._inscribed_circle_mtd(
-                                                ClockFace(create_circle()))
+                            type('_TestClockFace2', (ClockFace, ),
+                                {}, mixins=(ImageMixin, ))(create_circle()))
         self.assertEqual(circle_circularity, True)
 
     def test_perimeter_area_mtd(self):
@@ -93,32 +96,40 @@ class TestCircularity(unittest.TestCase):
         Test _perimeter_area_mtd method with a suqare and a perfect circle.
         """
         from utils.create_imgs import create_square, create_circle
+        from models.model_mixins.image_mixin import ImageMixin
         from models.clock_face import ClockFace
 
         self.assertIsNotNone(Circularity()._perimeter_area_mtd.__doc__)
 
         # square case
         square_circularity = Circularity()._perimeter_area_mtd(
-                                                    ClockFace(create_square()))
+                    type('_TestClockFace1', (ClockFace, ),
+                        {}, mixins=(ImageMixin, ))(create_square()))
         self.assertEqual(square_circularity, False)
 
         # circle case
         circle_circularity = Circularity()._perimeter_area_mtd(
-                                                    ClockFace(create_circle()))
+                    type('_TestClockFace2', (ClockFace, ),
+                        {}, mixins=(ImageMixin, ))(create_circle()))
         self.assertEqual(circle_circularity, True)
 
     def test_call(self):
         """
         Test __call__ method.
         """
-        from models.clock_face import ClockFace
         from utils.create_imgs import create_square, create_circle
+        from models.clock_face import ClockFace
+        from models.model_mixins.image_mixin import ImageMixin
 
         self.assertIsNotNone(Circularity().__call__.__doc__)
 
         # use square for test
-        self.assertFalse(Circularity()(ClockFace(create_square())))
-        self.assertTrue(Circularity()(ClockFace(create_circle())))
+        self.assertFalse(Circularity()(
+            type('_TestClockFace1', (ClockFace, ), {}, mixins=(ImageMixin, ))(
+                                    create_square())))
+        self.assertTrue(Circularity()(
+            type('_TestClockFace2', (ClockFace, ), {}, mixins=(ImageMixin, ))(
+                                    create_circle())))
 
 
 if __name__ == '__main__':

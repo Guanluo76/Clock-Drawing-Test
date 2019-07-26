@@ -91,6 +91,11 @@ class _MultiLazyProperties():
 
 
 def multi_lazy_properties(name=''):
+    """
+    Create a new delegate multi_lazy_properties class.
+
+    @param str name: name of the first lazy property
+    """
     return type(name + '_multi_lazy_properties', (_MultiLazyProperties, ),
                                                  dict(name_list=[],
                                                      result_func=None))

@@ -70,14 +70,14 @@ subscribe_image_generator = ImageGenerator
 import unittest
 
 
-@unittest.skip('Skip image generator test to test experiment module. Also '
-               'remember to annotate the subscribe_image_generator decorator.')
 class TestImageGenerator(unittest.TestCase):
     """
     Test ImageGenerator class.
     """
-    # this decorator must be annotated when not testing this module only
-    # @subscribe_image_generator
+    # defines a test image_generator class for unittest
+    _TestImageGenerator = type('_TestImageGenerator', (ImageGenerator, ), {})
+
+    @_TestImageGenerator
     def _get_val():
         """
         Value generator, helper function for test_image_generator. Simulates
@@ -97,8 +97,8 @@ class TestImageGenerator(unittest.TestCase):
         from functools import reduce
 
         # test sum of the values returned, should be 0 + 1 + 1 + 1 = 3
-        self.assertEqual(reduce(lambda pre, nxt: pre + nxt, ImageGenerator()),
-                         3)
+        self.assertEqual(reduce(lambda pre, nxt: pre + nxt,
+                                type(self)._TestImageGenerator()), 3)
 
 
 if __name__ == '__main__':

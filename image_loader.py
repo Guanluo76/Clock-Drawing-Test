@@ -74,7 +74,8 @@ class TestImageLoader(unittest.TestCase):
         self.assertIsNotNone(ImageFetcher.img_filename.__doc__)
         self.assertIsNotNone(ImageFetcher.next_img.__doc__)
 
-        image_fetcher = ImageFetcher()
+        # defines test ImageFetcher class for unittest
+        image_fetcher = type('_TestImageFetcher1', (ImageFetcher, ), {}) ()
 
         # add test image names into the queue
         for i in range(3):
@@ -91,7 +92,8 @@ class TestImageLoader(unittest.TestCase):
         """
         self.assertIsNotNone(image_loader.__doc__)
 
-        image_fetcher = ImageFetcher()
+        # defines test ImageFetcher class for unittest
+        image_fetcher = type('_TestImageFetcher2', (ImageFetcher, ), {}) ()
 
         # add image names into the queue
         for i in range(3):

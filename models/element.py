@@ -1,6 +1,15 @@
+"""
+The element module. Defines the parent class of all elements.
+"""
+
 from functools import reduce
 
 class Element():
+    """
+    The parent class for all elements. All elements should have a
+    properness_tests method decorated by @subscribe_methods, and add other
+    element methods with decorator @properness_tests.add_method.
+    """
     def __init__(self, contour):
         self._contour = contour
 
@@ -23,6 +32,12 @@ class Element():
         raise NotImplementedError
 
     def __call__(self, circle):
+        """
+        Run all the properness tests and return the result.
+
+        @param Circle circle: inscribed circle of clock face
+        @return True if passed
+        """
         return reduce(lambda res, test: res and test(self, circle),
                       [ True ] + self.properness_tests)
 

@@ -20,14 +20,31 @@
     - [数据模型](#6)
     - [函数式编程思想](#7)
         - [Python函数式编程介绍](#7-1)
-        - [装饰器与闭包](#7-2)
+            - [Map-Reduce处理](#7-1-1)
+            - [用Filter函数筛选](#7-1-2)
+            - [用Zip函数为数据附加信息](#7-1-3)
+            - [用Partial函数定制行为](#7-1-4)
+        - [高阶函数、装饰器与闭包](#7-2)
         - [函数式编程与面向对象编程的矛盾](#7-3)
     - [惰性求值](#8)
-
+        - [为什么需要惰性求值](#8-1)
+        - [惰性求值的实现](#8-2)
+        - [带来的问题](#8-3)
+    - [单例模式](#9)
+        - [为什么需要单例模式](#9-1)
+        - [单例模式的实现](#9-2)
+        - [思考：原型编程](#9-3)
+    - [Mix-in模式](#10)
+        - [为什么需要Mix-in模式](#10-1)
+        - [Mix-in模式的实现](#10-2)
+        - [基于Mix-in模式重新思考数据模型](#10-3)
+        - [思考：Mix-in与面向切面编程](#10-4)
     - [测试](#test)
+        - [单例模式带来的问题](#test-singleton)
     - [未来扩展](#mirai)
         - [输入图像预处理](#mirai-preprocessing)
         - [计分思路](#mirai-scoring)
+        - [并发](#mirai-multi)
 
 
 ## <span id='bg'>背景介绍</span>
@@ -185,14 +202,14 @@ settings.py
 tests.py
 ```
 
-简化为目录（加粗的为核心功能包）：
+简化为目录：
 
-**`- apps`**
-**`    - circularity`**
-**`    - scale`**
-**`- models`**
-**`    - scale`**
 ```
+- apps
+    - circularity
+    - scale
+- models
+    - scale
     clock_face.py
 - experiment.py
 - CDT.py
@@ -219,7 +236,7 @@ tests.py
 
 因此，我们将`ClockFace`作为特例，不计入`ElementImage`中作为子类，而是作为一个单独的对象。同时，由于需要提供针对表盘的一系列接口方便对其他`ElementImage`对象进行评估，但是开放`ClockFace`这个特殊的“元素图”给同级的其他`ElementImage`对象并不是一个好的做法，所以我们需要一个代理对象，让`ClockFace`和其他同级的`ElementImage`对象都可以访问，来提供表盘的圆形信息，也就是`Circle`对象的由来。
 
-`Circle`对象作为一个抽象的圆形，我们剥离了其身为表盘的属性，作为一个单纯的几何图形看待，这样就避免了破坏同级模块之间的封装，依然维持了仅由各自上级模块进行操作的初衷。对于各个`ElementImage`对象来说，`ClockFace`对象依然是同级的被封装的黑盒子，他们仅能够访问上级模块提供的`Circle`对象（虽然这个`Circle`对象由`ClockFace`对象提供，但是并不由`ClockFace`对象直接交予同级的`ElementImage`对象，而是通过上级模块作为沟通的桥梁，维持了信息的隐藏封装），然后依此评估各自的`Element`对象。但是实际上，这个问题并没有被如此简单的就完美解决，详见[惰性求值 - 带来的问题]()
+`Circle`对象作为一个抽象的圆形，我们剥离了其身为表盘的属性，作为一个单纯的几何图形看待，这样就避免了破坏同级模块之间的封装，依然维持了仅由各自上级模块进行操作的初衷。对于各个`ElementImage`对象来说，`ClockFace`对象依然是同级的被封装的黑盒子，他们仅能够访问上级模块提供的`Circle`对象（虽然这个`Circle`对象由`ClockFace`对象提供，但是并不由`ClockFace`对象直接交予同级的`ElementImage`对象，而是通过上级模块作为沟通的桥梁，维持了信息的隐藏封装），然后依此评估各自的`Element`对象。但是实际上，这个问题并没有被如此简单的就完美解决，详见[惰性求值 - 带来的问题](#8-3)
 
 `Element`对象自身保留一系列自评估方法，用于完成所有不需要除了`Circle`对象以外的所有外界信息（比如其他`Element`对象的位置）的评估。这种类型的自评估包括刻度元素的位置评估。同时，有时候需要把`Element`元素序列进行近一步的排序和归类，比如按照空间关系进行顺时针排序，还有如将10,11,12这三个时间数字的六个元素（因为OpenCV会认为一个数字是一个图形，并不能够将它们按照数字逻辑归类）打包到一起成为三个时间再交由上级模块评估，就要由对`Element`序列进行包装的`ElementImage`来完成。最后，在评估元素的时候，有时候需要其他元素的参与，譬如数字12的1和2要作为整体进行评估，这些需要按需联系多个元素进行同时评估的任务，不能交由元素自评估（1和2都分别不清楚对方的存在），就交由上层的`App`对象通过访问`ElementImage`来完成。这就是本项目的任务分级制度。
 
@@ -236,6 +253,8 @@ tests.py
 
 一般对于数据的处理，我们可以抽象为一个`map`后接`reduce`的一个过程。`map`代表的是对数据的一系列预处理，预处理行为被`map`到每一个列表的元素上。`reduce`代表的是数据的归纳，将一整个列表的元素归纳处理成为结果。在函数式编程时，我们会需要大量用到`lambda`匿名函数来配合各种操作，同时Python的“一切都是对象”的特性也会变得重要，因为函数也是一个对象，可以作为参数代表要进行的行为传递给其他函数。
 
+#### <span id='7-1-1'>Map-Reduce处理</span>
+
 示例：
 
 ```python
@@ -249,6 +268,8 @@ sum = reduce(lambda res, nxt: res + nxt, map(lambda n: int(n), datas))
 
 上面是一个最简单基本的[`map-reduce`](https://en.wikipedia.org/wiki/MapReduce)处理的应用。与此同时，我们可能对于数据的要求不仅仅在于统一处理，可能还需要筛选，这时候就轮到`filter`函数派上用场了。
 
+#### <span id='7-1-2'>用Filter函数筛选</span>
+
 示例：
 
 ```python
@@ -261,6 +282,8 @@ sum = reduce(lambda res, nxt: res + nxt, filter(lambda n: n % 2, map(lambda n: i
 ```
 
 上面我们在`map`的基础上又筛选了一遍所需元素，然后再交由`reduce`归纳出我们需要的结果。
+
+#### <span id='7-1-3'>用Zip函数为数据附加信息</span>
 
 实际应用的情况下，我们处理的数据可能并不是像上面一样简单的一个一元列表。往往我们可能会有两个列表同时需要处理，比如说一个元素列表和一个行为列表，然后把行为列表中的行为应用到元素列表中的对应元素上进行预处理，然后再进行归纳操作。这时候我们会需要`zip`函数来将两个一元列表转化成一个二元列表，其中新列表的每个元素都是分别来自两个列表中的元素。如：`zip([ 1, 2, 3 ], [ 4, 5, 6 ])`会得到一个新的数组`[ (1, 4), (2, 5), (3, 6) ]`。
 
@@ -284,6 +307,25 @@ sum = reduce(lambda res, nxt: res + nxt,
                  zip(map(lambda n: int(n), datas),
                      behaviors)))
 ```
+
+当然，除了上面这种`zip`数据列表和行为列表的情况，我们也有时候会`zip`两个数据列表，另一个列表作为处理所需的附加信息。使用`zip`函数可以为原有的列表添加一个新的等长的信息列表，并将信息列表中的信息附着在原有的数据列表元素上，从而可以通过附加信息帮助处理数据。
+
+示例：
+
+```python
+# 按照年龄为人物排序
+names = [ 'A', 'B', 'C' ]
+ages = [ 11, 19, 17 ]
+
+# n_names = [('A', 11), ('C', 17), ('B', 19)]
+n_names = n_names = sorted(zip(names, ages), key=lambda name_age: name_age[1])
+
+# unzip n_names
+# n_names = [ 'A', 'C', 'B' ]
+n_names = list(zip(*n_names)[0])
+```
+
+#### <span id='7-1-4'>用Partial函数定制行为</span>
 
 刚才的示例还是不能让我们满意，因为代码并不简洁。如果可以定义一个函数`add_minus_one`，然后增加一个参数作为判断要加还是要减，我们就可以只定义一个函数，然后增加代码复用性了。这时候，就到了偏函数功能`partial`的用武之地了。偏函数`partial`根据传入的一个函数对象和参数，返回一个设定好参数默认值的新函数。如：`print_hello = partial(print, 'helloworld')'`会得到一个新的函数`print_hello()`，用于打印`'helloworld'`。
 
@@ -309,7 +351,7 @@ sum = reduce(lambda res, nxt: res + nxt,
                      behaviors)))
 ```
 
-#### <span id='7-2'>装饰器与闭包</span>
+#### <span id='7-2'>高阶函数、装饰器与闭包</span>
 
 Python允许的对于行为的处理远不止`partial`函数一个。因为函数在Python中是一级对象，可以如同其他变量一样使用和作为参数传递，我们可以在Python中利用[高阶函数（higher-order function）](https://en.wikipedia.org/wiki/Higher-order_function)达到更多的行为定制。高阶函数的定义是满足**接受一个或多个函数作为输入**或者**输出一个函数**中至少一个条件的函数。
 
@@ -426,6 +468,8 @@ Python等主流语言使用的求值策略都是[及早求值（Eager Evaluation
 a = get_a() # get_a在运行到这里的时候就被调用了
 ```
 
+#### <span id='8-1'>为什么需要惰性求值</span>
+
 这样的策略固然在某些方面是更有效率的，因为不需要管理存储表达式结果的中介数据结构，直接赋值给变量即可。但是这样的求值策略在一些场景下会带来巨大的性能问题。比如下面的[数据库ORM（Object-relational Mapping）](https://en.wikipedia.org/wiki/Object-relational_mapping)代码
 
 示例：
@@ -501,6 +545,8 @@ class User():
 
 我们在项目中，把大部分的类都纯粹化成为一种数据结构，而不是数据和行为的结合体。这些数据结构提供大量可以访问的惰性求值成员变量，然后用户类直接通过访问这些惰性求值的成员变量来得到自己需要的信息。惰性求值类变量就是一个作为保存这些没有副作用的类方法计算结果的中介。
 
+#### <span id='8-2'>惰性求值的实现</span>
+
 当然，上面的这段Python伪代码是没有办法运行的，因为Python默认并不提供惰性求值，所以需要我们自己按需实现。在本项目中，我们利用了上文提到的函数装饰器来实现惰性变量，将一个不带参数的类方法包装。在这个类方法被第一次调用之后，保存其结果，然后之后的调用自动返回之前的结果。这里我们需要利用Python的[描述器协议（Descriptor Protocol）](https://docs.python.org/3/howto/descriptor.html)。不同于类装饰器的是，描述器需要实现对象的`__get__`方法，用以覆盖访问该成员时的操作。
 
 通过装饰器和描述器对目标方法进行包装，当第一次访问成员时，`__get__`会运行成员所代表的方法，然后将这个值代替原有的函数对象写入到类的成员字典中并返回结果，这样下次访问这个成员时，它就已经是一个普通的成员变量了。换句话说，在访问它之前，类成员字典是：`{ 'lazy_property': <function object> }`，但是在这之后由描述器替换成`{ 'lazy_property': <result of evaluation method> }`。具体实现如下。
@@ -539,12 +585,438 @@ class DatabaseORM():
     ...
 ```
 
+这样我们就解决了最基本的惰性求值需求，但是还没有结束。为了满足我们对于方法不带副作用的需求，有时一个方法可能会产出多个结果，这时一个惰性求值已经无法满足我们的需求了。
+
+示例：
+
+```python
+a, b, c = self._get_val()
+# 将这条赋值表达式转化为惰性求值
+```
+
+上面的代码中，`a, b, c`三个变量共享同一个初始化方法`_get_val`。如果按照上面的做法分别将这三个变量用描述器和装饰器包装成为惰性求值变量的话，会需要调用`_get_val`方法三次，明显因小失大。所以这里我们需要的功能是，将`a, b, c`这三个变量串联起来，其中任何一个被使用到的时候（也就是被求值的时候），另外两个同伴变量也必须随之被赋值，但是如果任何一个变量都没有被访问的时候，则延迟求值不变。
+
+基本思路依然是基于描述器来把类方法包装成惰性求值的成员变量，但是我们需要这三个描述器之间有所沟通，维护一个列表用于保存`_get_val`的运行结果。当一个成员变量被访问的时候，首先查看这个列表是否为空。如果不为空，那么返回对应的值并且改写类的成员字典对应的值。如果这个列表为空，那么调用保存好的求值函数`_get_val`进行求值并且更新列表的元素。为了使得描述器之间能够共用同一个列表，并且能在列表更新的第一时间得到结果，最简单的办法便是使用类变量来维护这个列表而不是实例变量。
+
+此时会出现一个新的问题，那就是如果使用类变量来维护结果列表的话，我们只能够创建一组`multi_lazy_properties`，不然使用别的求值函数的惰性求值变量们会污染现有的结果列表，因为大家使用的都是同一个类，自然也访问的是同一个类变量。为了解决这个问题，我们依然需要Python的“一切都是对象”的特性，因为类也是一个对象。类作为实例的模板，常理来说不应该是对象才对。但是在Python中，所有的类都有一个共同的模板`type`类。也就是说Python中的所有类都是基于`type`类派生的对象。如果在Python中尝试以下代码会容易理解这点：
+
+```python
+type(instance_of_C) # <class 'C'>
+type(C) # <class 'type'>
+type(type) # <class 'type'>
+```
+
+不难理解，类`C`是派生自`type`类的对象，而`instace_of_C`则是派生自类`C`的对象。
+
+鉴于这层关系，我们只需要为每一组`multi_lazy_properties`从`type`类中重新派生一个新的`multi_lazy_properties`类即可。这样即使每组的惰性变量在组内共享同一个类变量作为结果列表，也不会和其他组发生冲突。
+
+实现代码如下。
+
+[utils.lazy_property.py](../utils/lazy_property.py):
+
+```python
+class _MultiLazyProperties():
+    """
+    Decorator that links methods with a single self argument and use same
+    initializing function together and converts them into lazy property.
+
+    i.e. all of the property values would only be evaluated after at least one
+          of them is used.
+    """
+    def __init__(self, func, name=None):
+        self.func = func
+        self.__doc__ = getattr(func, '__doc__')
+        self.name = name or func.__name__
+
+        type(self).name_list += [ self.name ]
+
+    def add(self, func):
+        """
+        Add a new property.
+        """
+        return type(self)(func)
+
+    def function(self, func):
+        """
+        Add the initializing function. The function must return same amount of
+        values as that of the properties, and must take at most one argument
+        (self or cls).
+        """
+        type(self).result_func = func
+        return func
+
+    def _make_result_name_list(self, caller):
+        """
+        Call the evaluation function and zip the properties' name list and
+        result list together.
+
+        @param instance / class caller: caller of the evaluation function
+        @return 2-d list name-value pair list
+        """
+        result = type(self).result_func(caller) if \
+                                    type(self).result_func.__code__. \
+                                    co_argcount else type(self).result_func()
+
+        if not len(result) == len(type(self).name_list):
+            raise LazyPropertyError
+
+        return zip(type(self).name_list, result)
+
+    def __get__(self, instance, cls=None):
+        """
+        Call the function and put the return value in instance.__dict__ to
+        implement lazy property.
+        """
+        if instance is None:
+            return self
+
+        if not self.name in instance.__dict__:
+            for name, val in self._make_result_name_list(instance or cls):
+                instance.__dict__[name] = val
+
+        return instance.__dict__[self.name]
+
+
+def multi_lazy_properties(name=''):
+    return type(name + '_multi_lazy_properties', (_MultiLazyProperties, ),
+                                                 dict(name_list=[],
+                                                     result_func=None))
+
+
+# 使用场景
+class ThreeVals():
+    @multi_lazy_properties('a')
+    def a(self):
+        pass
+
+    @a.add
+    def b(self):
+        pass
+
+    @a.add
+    def c(self):
+        pass
+
+    @a.function
+    def get_val(self):
+        return a, b, c
+```
+
+除了之前介绍过的内容以外，这段代码中还使用了Python的自省功能。因为惰性求值既可以发生在类变量，实例变量，或者全局变量上，所以我们需要允许求值函数可以为类方法（只有一个参数`cls`），实例方法（只有一个参数`self`），或静态函数（没有参数）。因此，我们需要判断求值函数接收多少参数，并按需传入。这点通过Python的`func.__code__.co_argcount`完成，它返回一个函数接收的参数数量。
+
+#### <span id='8-3'>带来的问题</span>
+
+惰性求值看起来很美好，但是在实际运用的时候也会带来一些不可避免的问题。比方说上文提到过的`Circle`类。`Circle`对象本应该是由`ClockFace`产生的用于计算圆度的副产品，但是同时其他的`ElementImage`对象也需要利用`Circle`对象来帮助各自元素的评估。因此，我们明显需要将`Circle`对象作为参数传入各个`ElementImage`的初始化器中，作为成员变量。为了不破坏这个顺序，并且将`Circle`对象的创建留在`Circularity`的评估时，我们不能够写下面这样的代码。
+
+Python伪代码：
+
+```python
+# ElementImage
+class ElementImage():
+    def __init__(self, circle, ...):
+        self._circle = circle
+    
+    ...
+
+# 初始化ElementImage的时候
+element_image = ElementImage(clock_face.circle, ...)
+```
+
+按照这个方式写的话，如果`ElementImage`的初始化位于`Circularity`的评估操作之前，就会导致`Circle`对象在被`Circularity`模块使用之前就被创建，但这时候并不需要使用这个值，因为逻辑上整个程序第一次需要用到`Circle`对象是在`Circularity`的评估操作，在此之前的任何求值操作都是不必要的。在这里随着`ElementImage`的初始化而创建的`Circle`对象并没有立刻投入使用。所以根据我们之前的经验，这里需要使用惰性求值。
+
+Python伪代码：
+
+```python
+# ElementImage
+class ElementImage():
+    def __init__(self, clock_face, ...):
+        self._clock_face = clock_face
+
+    @lazy_property
+    def inscribed_circle(self):
+        return self._clock_face.inscribed_circle # ClockFace的inscribed_circle也是惰性求值变量
+
+    ...
+
+# 初始化ElementImage的时候
+element_image = ElementImage(clock_face, ...)
+```
+
+虽然这里使用惰性求值解决了`Circle`对象在需要前被求值的问题，但是又带来了结构上的问题。之前我们费尽心思就是为了将`ClockFace`对象向其他同级的`ElementImage`对象隐藏，但是上面的代码明显破坏了这一初衷，导致我们功亏一篑。为了解决这个问题，我们需要用到下一节的知识点[单例模式](#9)。
+
+
+### <span id='9'>单例模式</span>
+
+在上一节中我们提出了对`Circle`对象应用惰性求值策略所带来的信息隐藏问题，因为我们不能够直接将`Circle`对象作为参数传递给`ElementImage`类的初始化器，只能退而求次传入`ClockFace`对象，然后再通过`ClockFace`对象访问惰性求值变量`clock_face.inscribed_circle`来达到惰性求值的目的，但是这种做法破坏了我们的封装结构。为了解决这个问题，我们只好放弃将`Circle`对象作为参数传入给`ElementImage`类的初始化器，此时一种方案是考虑使用全局变量代为实现。
+
+#### <span id='9-1'>为什么需要单例模式</span>
+
+但是所有人都知道，全局变量的使用有诸多弊端，会污染变量作用域，带来很多问题，所以很明显使用全局变量也不是一个好的选择。这时候我们就需要考虑使用[单例模式（Singleton Pattern）](https://en.wikipedia.org/wiki/Singleton_pattern)来维护我们的`Circle`对象了。
+
+在我们的项目中，有些对象是全局仅存在一个的，譬如我们的表盘`ClockFace`对象，`Experiment`对象，各个`App`对象，各个`ElementImage`对象，还有`Circle`对象等。除此之外，我们还可能在程序的任何一个地方需要这个实例（比如各个`ElementImage`都会需要使用到`Circle`对象），然而我们并不想使用会污染作用域的全局变量来保存这些实例。或者说，有一个对象要作为其他对象的原型来使用（[原型编程（Prototype-based Programming）](https://en.wikipedia.org/wiki/Prototype-based_programming)）。上述三种情况都是可以应用单例模式的场景。
+
+应用单例模式时，一个单例对象的类必须保证只有一个实例存在。如果用户试图创建新的实例，那么用户只能得到已有的那个实例，而不是获得一个新的复制或新的实例。
+
+示例：
+
+```python
+# 创建单例类
+class Singleton():
+    ...
+
+# id(obj1) == id(obj2)
+obj1 = Singleton()
+obj2 = Singleton()
+```
+
+#### <span id='9-2'>单例模式的实现</span>
+
+为了应用单例模式，我们需要用到Python的特性[元类（Metaclass）](https://docs.python.org/3.3/reference/datamodel.html)。之前我们介绍过了Python中类，实例，与`type`类之间的关系，这里的元类就是进一步的实际运用。我们知道Python中的类都是`type`类的实例，而`type`类身为所有类的模板，也如同其他类一样，可以拥有子类，而继承自`type`类的子类就是我们的元类。换句话说，Python中的元类和`type`一样，也是类的模板，只不过是可以自定义的类的模板。
+
+我们通过创建元类`MetaSingleton`，改写通过应用`MetaSingleton`创建的类的`__new__`方法，来达到单例类的目的。实现代码如下。
+
+[meta_singleton.py](../utils/metas/meta_singleton.py)：
+
+```python
+class MetaSingleton(type):
+    """
+    The metaclass for singletons.
+    """
+    # instances list, store the instantiated singleton instances
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        """
+        When instantiating, check the instances list if a singleton instance
+        already exists. If so, return the existing instance, else create a new
+        one and return.
+
+        @return object instance for singleton class
+        """
+        if cls not in cls._instances:
+            cls._instances[cls] = super(MetaSingleton, cls).__call__(*args,
+                                                                     **kwargs)
+        return cls._instances[cls]
+```
+
+在元类`MetaSingleton`中，我们使用一个类变量字典`_instances`来保存单例类的实例。当一个单例类要被实例化的时候，我们查找该字典当中是否已经存在一个实例化好的对象。如果存在，则返回已有对象。如果没有，则创建一个新的实例并将其保存到字典中。下面是应用代码。
+
+示例：
+
+```python
+# 定义单例类
+class Singleton(metaclass=MetaSingleton):
+    ...
+
+# id(obj1) == id(obj2)
+obj1 = Singleton()
+obj2 = Singleton()
+```
+
+通过应用单例模式，我们将`Circle`定义为一个单例类，因为确实一个钟表上只有一个代表表盘的圆形。并且通过使用单例模式，我们达成了各个`ElementImage`共享`Circle`对象，而不破坏其求值顺序（一定在最先使用`ClockFace`的`Circularity`中求值）的目的。当然，单例模式的应用也不是高枕无忧的，具体详见[测试 - 单例模式带来的麻烦](#test-singleton)和[未来扩展 - 并发](mirai-multi)。
+
+#### <span='9-3'>思考：原型编程</span>
+
+现在我们接触的大多面向对象编程都是基于类进行的。以类作为模板，用来创造实例化多个对象，然后每个对象大致相互独立。在Python中这点很明显，因为一切都是对象，就连我们的类也是基于`type`（和继承`type`的元类）实例化得到的对象。然而并不是每一个面向对象语言都是这样的，其中最广为人知的特例便是JavaScript了。
+
+在像JavaScript和IO这样的语言中，对象并不是基于类实例化得到的，而是通过复制其他对象产生的。换句话说，在这些语言当中的对象，可以被简化理解成为一个字典，作为一个`slots`存在。而与此同时，我们可以随意更改`slots`中的内容，添加或者删除成员，又或者是基于现有的`slots`复制得到一个新的`slots`。这样的不同的背后就是原型编程。
+
+在上文讨论单例模式的应用场景时我们稍微提了一下原型模式，但是并没有给出任何的解释说明。原型模式是“明确一个实例作为要生成对象的种类原型，通过复制该实例来生成新的对象”的编程方式。
+
+只有在动态类型语言中，原型模式才能体现自身的价值。当我们思考类存在的意义的时候，往往会解释说类时实例的模板，为实例提供一系列限制和规范。换个角度讲，类也就是数据的类型，对象则是这个类型的一个值。打个比方，数字`1`明显是一个`int`型的变量，但如果`int`就是一个类（比如在Python中一样），那么数字`1`也可以称作是`int`类的一个实例，这点可能在静态语言中有所区别（有时这些语言会通过[Boxing-Unboxing](https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/types/boxing-and-unboxing)来向你隐藏这一事实），因为它们会将`int`这样的数据做成[值类型](https://en.wikipedia.org/wiki/Value_type_and_reference_type)，然后把实例作为[引用类型](https://en.wikipedia.org/wiki/Value_type_and_reference_type)的数据。但是在Python这样的语言中没有值类型和引用类型的区别。更甚一步来说，Python这样的动态类型语言根本没有对于类型的诸多限制。这样的特性导致相比静态类型语言，在动态类型语言中类和实例之间的 类型 - 值 关系变得极其不重要。
+
+诚然，我们在Python中可以使用传统的面向对象编程进行类的定义和实例化。
+
+示例：
+
+```python
+# Human类是所有人类实例的模板，也就是规定了类型
+class Human():
+    def eat(self):
+        return 'eating'
+
+# Worker类继承了Human类，作为Human的一种特例
+class Worker(Human):
+    def work(self):
+        return 'working'
+
+# 实例化一个Worker对象
+someone = Worker()
+someone.eat() # 'eating'
+someone.work() # 'working'
+```
+
+不过除此之外，Python提供了可以充当`slots`的类成员字典`__dict__`属性，这让我们有了一个新的方式定义一个对象。
+
+示例：
+
+```python
+# Human类是一个单例类
+# 其唯一的实例会作为Human对象的雏形供复制使用
+class Human(metaclass=MetaSingleton):
+    def eat(self):
+        return 'eating'
+
+    def clone(self):
+        return copy.deepcopy(self)
+
+# id(human) != id(worker) != id(someone)
+human = Human()
+worker = human.clone()
+worker.__dict__['work'] = lambda : 'working'
+someone = worker.clone()
+
+someone.eat() # 'eating'
+someone.work() # 'working'
+```
+
+原型编程有着惊人的灵活性和可扩展性，可以随意的为复制雏形得到的对象添加新的属性。而且，原型编程与传统静态类型语言中的面向对象相比，更关注`i have`而不是`i am`的概念。换句话说，原型编程更注重对象有哪些成员，而不是这个对象实例化自哪个类。
+
+
+### <span id='10'>Mix-in模式</span>
+
+#### <span id='10-1'>为什么需要Mix-in模式</span>
+
+对于像Java这样的语言来说，继承有着两种含义。一种是实现的继承（在Java中用`extends`继承，只能是单一的），一种是规格的继承（在Java中用`implements`继承，可以指定多个）。Java中的接口对于实现没有任何限制，可以是任何没有继承关系的类来实现。在需要多重继承的情况下，使用实现继承（`extends`）会带来多重继承的复杂性，其中包括查找优先级，结构复杂化，还有功能冲突等一系列问题。而规格的继承（`implements`）则有着不能共享实现的缺点。
+
+同时，在像Python这样的动态语言中，存在着[鸭子类型（Duck Typing）](https://en.wikipedia.org/wiki/Duck_typing)的概念。鸭子类型源于一句话，“走起路来像鸭子，叫起来也像鸭子，那么它就是鸭子”。这背后的意义是，只关心行为而不关心类型。对于一个对象，我们只关心它有什么样的行为，而不在意它派生自什么类。举例来说，只要一个列表中的所有元素对象都实现了`__call__`方法，那么我们就可以写出这样的代码：`[ e() for e in e_list ]`，不管`e_list`列表中到底装的是什么。
+
+换句话来说，对于动态语言，我们不需要有像Java这样的静态语言一样的接口和类型的限制，只要对象遵循协议实现了所需要的行为即可。同时，为了实现上面讨论的多重继承，而一定程度上避免两种方式各自的问题，在动态语言中我们可以选择应用[Mix-in模式](https://en.wikipedia.org/wiki/Mixin)。
+
+Mix-in是具有不能单独生成实例，也不能继承普通类的特点的一种抽象类，定义了一系列带有实现的行为，用于在需要的时候“插入”目标类，从而完成具有实现共享的规格继承，这点契合了动态语言中的鸭子类型概念。使用Mix-in时按照以下规则，通常的继承使用单一继承，第二个开始的父类需要是Mix-in的抽象类。
+
+我们可以把Mix-in看做是一种特殊的多重继承，但是语义上与多重继承有所区别。这是因为继承关系的两个类存在`is-a`关系（如`Human is Mammal`），但是Mix-in看重的是行为（如`Human can eat`）。下面的Python伪代码阐释了Mix-in的应用。
+
+示例：
+
+```python
+class AnimalEatMixin(Mixin):
+    def eat(self):
+        # eat
+
+class Human(Mammal, AnimalEatMixin):
+    ...
+
+class Frog(Amphibia, AnimalEatMixin):
+    ...
+```
+
+在上面的代码中，我们使用单一继承来做语义上的一般继承（is-a），然后使用Mix-in完成剩下的共享实现的规格继承，并且由于鸭子类型的存在，我们依然可以用相同的方式使用`Human`类和`Frog`类的行为。与此同时，相比定义一个更大的`Animal`类，简化了继承结构，相比一般的多重继承，解决了语义不符的查找优先级的问题。并且使用Mix-in抽象类符合软件设计的[DRY原则](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself)，使得`Human`类和`Frog`类共享了实现。通过使用Mix-in抽象类，我们可以将行为功能模块化，并且随时插入需要的类，这一过程简单高效而美观。
+
+#### <span id='10-2'>Mix-in模式的实现</span>
+
+Python中默认没有提供Mix-in这一功能。当然使用多重继承也可以模拟Mix-in的基本功能，但是语义上就不符合了（因为用户类和Mix-in抽象类没有任何is-a关系）。所以我们为了将Mix-in模式投入使用，需要自己编写一个工具来为类插入Mix-in抽象类的功能，并且保证这个过程不会对继承结构有任何改变。
+
+为了实现这个功能，我们又需要使用前文提及的元类，来定义使用Mix-in类的用户类的模板。我们在根据`MetaMixin`模板元类创建用户类的时候，将Mix-in抽象类中的所有方法抽取出来并注入到用户类当中，这样就保证了Mix-in仅继承功能的纯粹性和扁平性。具体实现代码如下。
+
+[meta_mixin.py](../utils/metas/meta_mixin.py)：
+
+```python
+class MetaMixin(type):
+    """
+    The metaclass for mixins. User classes should set this as metaclass, and
+    add the mixins into the mixins list.
+    e.g. class User(metaclass=MetaMixin, mixins=(Mixin1, Mixin2)):
+    """
+    def __new__(cls, name, bases, classdict, mixins):
+        """
+        Add the attributes from mixin classes to the user class when creating
+        a new class from this metaclass.
+
+        @param type mixins: the mixin classes
+        @return type user classes created
+        """
+        # create a new class from type
+        rclass = super().__new__(cls, name, bases, classdict)
+
+        # add attributes
+        for mixin in mixins:
+            [ setattr(rclass, attr_name, getattr(mixin, attr_name)) \
+                    if not attr_name in rclass.__dict__ else None
+                    for attr_name in mixin.__dict__.keys() ]
+
+        return rclass
+
+
+# 使用场景
+class ScaleImage(ElementImage,
+                 metaclass=MetaMixin, mixins=(ScaleImageMixin, )):
+    ...
+```
+
+在元类`MetaMixin`中，我们改写了其`__new__`方法来改变其创建类时的行为。在创建类时，我们先基于`type`创建类，然后再将Mix-in类的成员全部注入到创建好的类的成员字典中，然后再返回注入好的类，这样就实现了Python中的Mix-in。
+
+#### <span id='10-3'>基于Mix-in模式重新思考数据模型</span>
+
+现在我们有了Mix-in这一强大的武器，再回来重新思考改进原来的数据模型。原有的`App - ElementImage - Element`模式不需要做出任何改变。我们为所有的`App`类创建共同的父类。创建共同的父类的目的是统一并规范化所有的`App`对外提供的接口。这样上层模块在拿到一个`App`对象时就可以直接通过它的`__call__`方法遍历它的评估方法并且得到结果了。实现代码如下。
+
+[app.py](../apps/app.py)：
+
+```python
+class App():
+    ...
+
+    def __call__(self, element_img):
+        """
+        Run the app.
+
+        @param ClockFace / ElementImageMixin element_img: image to be processed
+        @return True if passed
+        """
+        return reduce(lambda res, mtd: res and mtd(self, element_img),
+                      [ True ] + self.methods)
+```
+
+对于`ElementImage`也是同样的道理，只不过身为元素集合的包装，它统一向外提供的是一个惰性求值变量`elements`。
+
+[element_image.py](../models/element_image.py)：
+
+```python
+class ElementImage(metaclass=MetaMixin, mixins=(ImageMixin, )):
+    ...
+
+    @lazy_property
+    def elements(self):
+        """
+        The lazy property elements. Returns the list of elements in the element
+        image.
+
+        @return list elements list
+        """
+        # get outer contours
+        contours, _ = self._find_clean_contours(self.img,
+                                                mode=cv.RETR_EXTERNAL)
+
+        # create and return element list
+        return [ type(self)._ELEMENT(contour) for contour in contours ]
+```
+
+至于`Element`对象，也是统一向外提供一个`__call__`方法用于遍历所有的自评估方法，然后得到自评估的结果。
+
+[element.py](../models/element.py)：
+
+```python
+class Element():
+    ...
+
+    def __call__(self, circle):
+        return reduce(lambda res, test: res and test(self, circle),
+                      [ True ] + self.properness_tests)
+```
+
+但是我们发现，时钟的刻度元素（`ScaleElement`）与时间数字的元素（`DigitElement`）在判断是否每个扇形的中心区域都有且仅有一个元素的自评估操作上是共通的，但是根据我们之前的原则，这两个`Element`对象都继承自父类`Element`，而这部分行为并不应该存在在所有元素的父类`Element`中。这时我们为了满足DRY原则并且解决多重继承，我们需要将这部分行为抽取出来，做成=`ScaleElementMixin`Mix-in抽象类，并且分别织入`ScaleElement`和`DigitElement`这两个类中。对于`ElementImage`也有类似的操作，这里也不赘述了。
+
+#### <span id='10-4'>思考：Mix-in与面向切面编程</span>
+
 
 ### <span id='test'>测试</span>
+
+#### <span id='test-singleton'>单例模式带来的问题</span>
 
 
 ### <span id='mirai'>未来扩展</span>
 
 #### <span id='mirai-preprocessing'>输入图像预处理</span>
 #### <span id='mirai-scoring'>计分思路</span>
+#### <span id='mirai-multi'>并发</span>
 

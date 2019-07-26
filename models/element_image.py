@@ -9,11 +9,15 @@ import cv2 as cv
 from utils.metas.meta_mixin import MetaMixin
 from models.model_mixins.image_mixin import ImageMixin
 from utils.lazy_property import lazy_property
+from models.circle import Circle
 
 
 class ElementImage(metaclass=MetaMixin, mixins=(ImageMixin, )):
-    def __init__(self, clock_face, raw_img):
-        self._clock_face = clock_face
+    """
+    The parent class for all element images. Provides a elements list for
+    usage.
+    """
+    def __init__(self, raw_img):
         self._raw_img = raw_img
 
     @lazy_property
@@ -24,7 +28,7 @@ class ElementImage(metaclass=MetaMixin, mixins=(ImageMixin, )):
 
         @return Circle inscribed circle
         """
-        return self._clock_face.inscribed_circle
+        return Circle()
 
     @lazy_property
     def elements(self):
